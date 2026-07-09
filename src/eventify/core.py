@@ -13,10 +13,11 @@ from typing import Generator, Union
 import cv2
 import numpy as np
 
-# BGR triplets — OpenCV's native channel order.
-_GRAY = np.array([128, 128, 128], dtype=np.float32)
-_BLUE = np.array([255, 0, 0], dtype=np.float32)     # positive delta
-_YELLOW = np.array([0, 255, 255], dtype=np.float32)  # negative delta
+# DVS-style palette (BGR): near-black background, deep royal blue for ON
+# (brightening), warm amber for OFF (darkening).
+_BG = np.array([0, 0, 0], dtype=np.float32)
+_ON = np.array([180, 70, 0], dtype=np.float32)      # deep blue
+_OFF = np.array([0, 170, 220], dtype=np.float32)    # amber/gold
 
 
 def frame_to_events(
@@ -48,11 +49,12 @@ def events_to_frame(
     delta: np.ndarray,
     max_delta: Union[float, None] = None,
 ) -> np.ndarray:
-    """Render a delta map into a BGR uint8 image.
+    """Render a delta map into a BGR uint8 image using the DVS palette.
 
-    Positive deltas fade from gray to blue, negative deltas fade to yellow.
-    If ``max_delta`` is None, saturation is scaled per-frame to the largest
-    absolute delta present. Otherwise magnitudes are clipped to ``max_delta``.
+    Positive deltas fade from black to deep blue, negative deltas fade to
+    amber. If ``max_delta`` is None, saturation is scaled per-frame to the
+    largest absolute delta present. Otherwise magnitudes are clipped to
+    ``max_delta``.
     """
     h, w = delta.shape
     abs_delta = np.abs(delta)
@@ -63,16 +65,15 @@ def events_to_frame(
         peak = float(max_delta)
 
     if peak <= 0.0:
-        img = np.broadcast_to(_GRAY, (h, w, 3)).astype(np.uint8).copy()
-        return img
+        return np.broadcast_to(_BG, (h, w, 3)).astype(np.uint8).copy()
 
     intensity = np.clip(abs_delta / peak, 0.0, 1.0)[..., None]  # (h, w, 1)
 
-    # Choose the target color per-pixel based on delta sign; sign==0 -> gray,
-    # which produces intensity==0 anyway, so the choice is irrelevant there.
-    target = np.where(delta[..., None] >= 0, _BLUE, _YELLOW)  # (h, w, 3)
+    # Sign==0 pixels fall on the ON branch but have intensity==0, so they
+    # collapse to the background regardless of which target is chosen.
+    target = np.where(delta[..., None] >= 0, _ON, _OFF)  # (h, w, 3)
 
-    img = _GRAY + intensity * (target - _GRAY)
+    img = _BG + intensity * (target - _BG)
     return np.clip(img, 0, 255).astype(np.uint8)
 
 

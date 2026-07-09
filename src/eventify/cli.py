@@ -126,17 +126,20 @@ class _ThreadedCapture:
 
 
 def _accum_to_bgr(accum: np.ndarray, max_events: float) -> np.ndarray:
-    """Render the accumulator to BGR: blue for +, yellow for -, gray otherwise."""
+    """Render the accumulator to BGR using the DVS palette.
+
+    Positive accumulator values (ON events) fade black → deep blue;
+    negative values (OFF events) fade black → amber/gold.
+    """
     intensity = np.clip(np.abs(accum) / max_events, 0.0, 1.0)[..., None]
-    # Vectorized: gray + intensity * (target - gray), where target ∈ {blue, yellow}.
     positive = accum >= 0
-    # Precompute BGR triplets so we don't rebuild them every frame.
+    # Target color per pixel: ON = (180, 70, 0), OFF = (0, 170, 220), BGR.
     target = np.empty(accum.shape + (3,), dtype=np.float32)
-    target[..., 0] = np.where(positive, 255.0, 0.0)    # B
-    target[..., 1] = np.where(positive, 0.0, 255.0)    # G
-    target[..., 2] = np.where(positive, 0.0, 255.0)    # R
-    gray = 128.0
-    img = gray + intensity * (target - gray)
+    target[..., 0] = np.where(positive, 180.0, 0.0)    # B
+    target[..., 1] = np.where(positive, 70.0, 170.0)   # G
+    target[..., 2] = np.where(positive, 0.0, 220.0)    # R
+    # Background is black; intensity=0 means the pixel stays black.
+    img = intensity * target
     return np.clip(img, 0, 255).astype(np.uint8)
 
 

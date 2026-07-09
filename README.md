@@ -8,10 +8,10 @@ no pretrained models. Just NumPy, OpenCV, and h5py.
 Two independent output paths:
 
 1. **Visualization** — signed per-pixel log-delta rendered to color video
-   or live webcam preview.
-   - **Blue** — brightening pixels (positive delta)
-   - **Yellow** — darkening pixels (negative delta)
-   - **Gray** — no event
+   or live webcam preview, using the classic DVS palette:
+   - **Deep blue** — brightening pixels (positive delta)
+   - **Warm amber** — darkening pixels (negative delta)
+   - **Black** — no event
 2. **DVS export** — binary-polarity `(x, y, t_µs, p)` event tuples in an
    HDF5 layout compatible with the **DVS128 Gesture** dataset (as
    redistributed by Tonic/SpikingJelly).
